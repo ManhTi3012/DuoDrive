@@ -5,7 +5,11 @@ DuoDrive is a closed-loop brushed motor driver design to offer simple and afford
 * Support velocity and position control.
 
 # Hardware
-
+DuoDrive is designed to handle high current within a small footprint
+* Voltage input: 12-24v, 30V absolute maximum
+* Maximum continuous current: 25A
+* Dimensions: 49mm x 75mm
+* Mass:
 # Firmware
 
 # Documentation
