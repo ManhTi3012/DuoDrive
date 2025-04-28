@@ -1,7 +1,7 @@
 # ⚠️ **WARNING: PROJECT UNDER DEVELOPMENT**
 ## **Tests are not yet implemented — use at your own risk.**
 
-
+![alt text](https://github.com/ManhTi3012/DuoDrive/blob/main/Photos/Kicad.png)
 # DuoDrive
 DuoDrive is a closed-loop brushed motor driver design to offer simple and affordable open-source hardware and software.
 * It support both increment-type and absolute-type encoder.
