@@ -5,9 +5,8 @@
  *      Author: Ti Manh
  */
 
-#ifndef CONSTANTS_H
-#define CONSTANTS_H
-
+#ifndef INC_CONSTANTS_H
+#define INC_CONSTANTS_H
 
 #define MAX_DUTY 999
 
@@ -34,7 +33,6 @@
 #define LOOP_TIME 0.0002
 
 #define SERIAL_SPEED 115200
-
 
 
 #endif /* INC_CONSTANTS_H_ */
