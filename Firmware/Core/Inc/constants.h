@@ -8,11 +8,9 @@
 #ifndef INC_CONSTANTS_H
 #define INC_CONSTANTS_H
 
-#define MAX_DUTY 999
+#define MAX_DUTY 990
 
 #define MIN_DUTY 0
-
-#define ADC_RESOLUTION_ 12
 
 #define PI 3.14159265359f
 
