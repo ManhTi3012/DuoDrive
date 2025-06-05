@@ -12,23 +12,27 @@
 
 #define MIN_DUTY 0
 
-#define PI 3.14159265359f
+#define MAX_VELOCITY 500
 
-#define PI2 6.283185307f
+#define RAMP_SPEED 990
 
-#define SQRT3DEV2 0.8660254038f
+#define VEL_P 9.0
 
-#define CPR 16384
+#define VEL_I 0.1
 
-#define RAD_CONST 0.000383495187f
+#define VEL_D 0.5
 
-#define CPR2 16384 / 2
+#define POS_P 2.0
 
-#define PWM_FREQ 20000
+#define POS_I 0.07
 
-#define LOOP_FREQ 5000
+#define POS_D 0.07
 
-#define LOOP_TIME 0.0002
+#define VEL_LOOP_FREQ 100
+
+#define POS_LOOP_FREQ 100
+
+#define VEL_EMA_ALPHA 0.2d
 
 #define SERIAL_SPEED 115200
 
