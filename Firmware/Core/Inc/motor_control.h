@@ -21,10 +21,12 @@ public:
 
 	double GetPosition();
 	double GetRPM();
+	int16_t GetPwm();
 
 	void PositionMode(double target);
 	void VelocityMode(double target);
 	void OpenLoopMode(int16_t pwm);
+	void ResetPos();
 
     struct {
         PID position;  // Outer loop (position → velocity)
@@ -51,11 +53,8 @@ private:
 		OPEN_LOOP
 	} current_mode_ = OPEN_LOOP;
 
-
-
     double target_velocity_ = 0;
     double target_position_ = 0;
-
 
 	TIM_TypeDef *L_TIM;
 	uint8_t L_CHN;

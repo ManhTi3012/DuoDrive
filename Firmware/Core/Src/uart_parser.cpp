@@ -10,7 +10,8 @@
 #include <stdlib.h>
 #include "motor_control.h"
 
-extern MOTOR motor1;
+extern Motor motor1;
+extern Motor motor2;
 
 bool parse(char *command) {
     char *argvalue[4];
@@ -31,9 +32,22 @@ bool parse(char *command) {
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
         }
     }
-    else if (strcmp(argvalue[0], "motor") == 0 && argcount > 1) {
+    else if (strcmp(argvalue[0], "PWM") == 0 && argcount > 1) {
+    	motor_id = atoi(argvalue[1])
+    	if (strcmp(argvalue[1], "1") == 0){
+    		int speed = atoi(argvalue[2]);
+    		motor1.OpenLoopMode(speed);
+    	}
         int speed = atoi(argvalue[1]);
-        motor1.setPwm(speed);
+        motor1.OpenLoopMode(speed);
+    }
+    else if (strcmp(argvalue[0], "POS") == 0 && argcount > 1) {
+        int target = atoi(argvalue[1]);
+        motor1.PositionMode(target);
+    }
+    else if (strcmp(argvalue[0], "VEL") == 0 && argcount > 1) {
+        int target = atoi(argvalue[1]);
+        motor1.VelocityMode(target);
     }
     return true;
 }

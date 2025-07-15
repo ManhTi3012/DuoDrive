@@ -7,7 +7,7 @@
 
 #include "motor_control.h"
 
-bool MOTOR::init(TIM_TypeDef *timer_left, uint8_t channel_left,TIM_TypeDef *timer_right, uint8_t channel_right){
+bool Motor::Init(TIM_TypeDef *timer_left, uint8_t channel_left,TIM_TypeDef *timer_right, uint8_t channel_right){
 	if(channel_right > 4 || channel_left > 4){
 		return false;
 	}
@@ -15,16 +15,108 @@ bool MOTOR::init(TIM_TypeDef *timer_left, uint8_t channel_left,TIM_TypeDef *time
 	L_CHN = channel_left;
 	R_TIM = timer_right;
 	R_CHN = channel_right;
+
+    pid.position.setGains(POS_P, POS_I, POS_D);  // Kp, Ki, Kd
+    pid.position.setOutputLimits(-MAX_VELOCITY, MAX_VELOCITY);
+
+    // Velocity PID (outputs PWM)
+    pid.velocity.setGains(VEL_P, VEL_I, VEL_D);
+    pid.velocity.setOutputLimits(-MAX_DUTY, MAX_DUTY);
+
 	return true;
 }
 
-void MOTOR::initEncoder(int16_t ppr,uint8_t port){
-	hasEncoder = true;
-	pulsePerRev = ppr;
-	encoderPort = port;
+void Motor::InitEncoder(double ppr,TIM_TypeDef *timer_encoder){
+	has_encoder_ = true;
+	pulse_per_rev_ = ppr;
+	encoder_port_ = timer_encoder;
 }
 
-void MOTOR::setPwm(int16_t pwm){
+double Motor::GetPosition(){
+	if(has_encoder_){
+		return encoder_position_;
+	}
+	else{
+		return 0;
+	}
+}
+
+double Motor::GetRPM(){
+	if(has_encoder_){
+		return encoder_speed_;
+	}
+	else{
+		return 0;
+	}
+}
+
+int16_t Motor::GetPwm(){
+	return target_pwm_;
+}
+
+void Motor::PositionMode(double target){
+	if(!has_encoder_){return;}
+	else{
+		current_mode_ = POSITION;
+		target_position_ = target;
+
+	}
+}
+void Motor::VelocityMode(double target){
+	if(!has_encoder_){return;}
+	else{
+		current_mode_ = VELOCITY;
+		target_velocity_ = target;
+	}
+}
+
+void Motor::OpenLoopMode(int16_t pwm){
+	current_mode_ = OPEN_LOOP;
+	target_pwm_ = pwm;
+}
+
+void Motor::Update(double dt){
+	UpdateData(dt);
+	switch(current_mode_){
+		case OPEN_LOOP:
+			RampPwm(dt);
+			break;
+		case POSITION:
+			target_velocity_ = pid.position.calculate(target_position_, encoder_position_, dt);
+
+			target_pwm_ = pid.velocity.calculate(target_velocity_, encoder_speed_, dt);
+			RampPwm(dt);
+
+			break;
+		case VELOCITY:
+			target_pwm_ = pid.velocity.calculate(target_velocity_, encoder_speed_, dt);
+			RampPwm(dt);
+			break;
+	}
+}
+
+void Motor::UpdateData(double dt){
+	if(!has_encoder_){return;}
+	else{
+		uint16_t current_encoder_value = encoder_port_ -> CNT;
+		int16_t delta = (int16_t)(current_encoder_value - last_encoder_value_);
+
+	    if (reverse_encoder_) {
+	        delta = -delta;
+	    }
+	    double raw_speed = static_cast<double>(delta) / dt;
+	    raw_speed = raw_speed / pulse_per_rev_ * 60.0;
+
+	    encoder_speed_ = (double) VEL_EMA_ALPHA * raw_speed + (1.0 - VEL_EMA_ALPHA) * encoder_speed_;
+
+	    if(delta == 0){encoder_speed_ = 0;}
+
+		encoder_position_ += delta;
+		last_encoder_value_ = current_encoder_value;
+	}
+}
+
+void Motor::SetPwm(int16_t pwm){
 	//clamp pwm
 	if(pwm > MAX_DUTY){
 		pwm = MAX_DUTY;
@@ -71,30 +163,15 @@ void MOTOR::setPwm(int16_t pwm){
 	}
 }
 
-int64_t MOTOR::getPosition(){
-	if(hasEncoder){
-		return encoderPosition;
+void Motor::RampPwm(double dt){
+	double delta = (double) RAMP_SPEED * dt;
+	if(current_pwm_ < target_pwm_){
+		if(current_pwm_ + delta > target_pwm_){current_pwm_ = target_pwm_;}
+		else{current_pwm_ += delta;}
 	}
-	else{
-		return 0;
+	else if (current_pwm_ > target_pwm_){
+		if(current_pwm_ - delta < target_pwm_){current_pwm_ = target_pwm_;}
+		else{current_pwm_ -= delta;}
 	}
-}
-
-int32_t MOTOR::getRPM(){
-	if(hasEncoder){
-		return encoderSpeed;
-	}
-	else{
-		return 0;
-	}
-}
-
-void MOTOR::positionMode(){
-	if(!hasEncoder){return;}
-	else{
-
-	}
-}
-void MOTOR::velocityMode(){
-
+	SetPwm(current_pwm_);
 }

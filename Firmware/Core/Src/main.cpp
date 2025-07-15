@@ -55,12 +55,19 @@ DMA_HandleTypeDef hdma_usart3_rx;
 
 /* USER CODE BEGIN PV */
 LED led1;
-MOTOR motor1;
+Motor motor1;
 uint8_t RxData[10];
 
 uint8_t RxCommand[128];
 uint8_t RxIndex;
 volatile bool RxReceiving = true;
+
+int encoder = 0;
+double speed = 0;
+
+double vel_P = 10.0, vel_D = 0.2, vel_I = 0.2;
+double pos_P = 2.0, pos_D = 0.1, pos_I = 0.5;
+
 
 /* USER CODE END PV */
 
@@ -133,9 +140,12 @@ int main(void)
 
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
-  motor1.init(TIM1, 1, TIM1, 2);
+  motor1.Init(TIM1, 1, TIM1, 2);
+  motor1.InitEncoder(256, TIM2);
   led1.init(GPIOB, GPIO_PIN_6);
   led1.setCycleTime(7);
+
+  uint64_t last_time = 0;
 
   // Start UART DMA
   HAL_UART_Receive_DMA(&huart3, RxData, 1);
@@ -148,6 +158,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if(HAL_GetTick() - last_time >= 10){
+
+		  motor1.Update(0.01);
+		  encoder = motor1.GetPosition();
+		  speed = motor1.GetRPM();
+		  last_time = HAL_GetTick();
+	  }
+
 
   }
   /* USER CODE END 3 */
@@ -347,7 +365,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 65000;
+  htim2.Init.Period = 65535;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
