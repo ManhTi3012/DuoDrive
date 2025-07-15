@@ -1,7 +1,7 @@
 # ⚠️ **WARNING: PROJECT UNDER DEVELOPMENT**
 ## **Tests are not yet implemented — use at your own risk.**
 
-![alt text](https://github.com/ManhTi3012/DuoDrive/blob/main/Photos/Kicad.png)
+![alt text](https://github.com/ManhTi3012/DuoDrive/blob/main/photos/Kicad.png)
 # DuoDrive
 DuoDrive is a closed-loop brushed motor driver design to offer simple and affordable open-source hardware and software.
 * It support both increment-type and absolute-type encoder.
@@ -13,7 +13,6 @@ DuoDrive is designed to handle high current within a small footprint
 * Voltage input: 12-24v, 30V absolute maximum
 * Maximum continuous current: 25A
 * Dimensions: 49mm x 75mm
-* Mass:
 # Firmware
 
 # Documentation
