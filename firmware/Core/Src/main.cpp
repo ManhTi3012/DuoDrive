@@ -56,6 +56,8 @@ DMA_HandleTypeDef hdma_usart3_rx;
 /* USER CODE BEGIN PV */
 LED led1;
 Motor motor1;
+Motor motor2;
+// UART command
 uint8_t RxData[10];
 
 uint8_t RxCommand[128];

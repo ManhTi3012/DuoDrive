@@ -9,16 +9,19 @@
 #include <cstring>
 #include <stdlib.h>
 #include "motor_control.h"
+#include <stdio.h>
 
+extern UART_HandleTypeDef huart3;
 extern Motor motor1;
 extern Motor motor2;
+
 
 bool parse(char *command) {
     char *argvalue[4];
     int argcount = 0;
     // split command to tokens
     char *token = strtok(command, " ");
-    while (token != NULL && argcount < 4) {
+    while (token != NULL && argcount < 6) {
     	argvalue[argcount++] = token;
         token = strtok(NULL, " ");
     }
@@ -26,6 +29,7 @@ bool parse(char *command) {
     if (argcount == 0) return false;
 
     if (strcmp(argvalue[0], "led") == 0 && argcount > 1) {
+    	// test function
         if (strcmp(argvalue[1], "on") == 0) {
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
         } else if (strcmp(argvalue[1], "off") == 0) {
@@ -33,21 +37,63 @@ bool parse(char *command) {
         }
     }
     else if (strcmp(argvalue[0], "PWM") == 0 && argcount > 1) {
-    	motor_id = atoi(argvalue[1])
-    	if (strcmp(argvalue[1], "1") == 0){
-    		int speed = atoi(argvalue[2]);
-    		motor1.OpenLoopMode(speed);
+    	int motor_id = atoi(argvalue[1]);
+    	Motor *motor = NULL;
+    	if(motor_id == 1){motor = &motor1;}
+    	else if(motor_id == 2){motor = &motor2;}
+    	else {
+    		printf("Motor id out of range");
     	}
-        int speed = atoi(argvalue[1]);
-        motor1.OpenLoopMode(speed);
+
+    	if (argcount == 2) {
+    		printf("%d\r\n." , motor->GetPwm());
+        }
+    	else {
+            int speed = atoi(argvalue[2]);
+            motor->OpenLoopMode(speed);
+        }
+
+    	return true;
     }
+
     else if (strcmp(argvalue[0], "POS") == 0 && argcount > 1) {
-        int target = atoi(argvalue[1]);
-        motor1.PositionMode(target);
+    	int motor_id = atoi(argvalue[1]);
+    	Motor *motor = NULL;
+    	if(motor_id == 1){motor = &motor1;}
+    	else if(motor_id == 2){motor = &motor2;}
+    	else {
+    		// print sth here
+    	}
+
+    	if (argcount == 2) {
+    		printf("%ld\r\n." , (long) motor->GetPosition());
+        }
+    	else {
+            int target = atoi(argvalue[2]);
+            motor->PositionMode(target);
+        }
+
+    	return true;
     }
     else if (strcmp(argvalue[0], "VEL") == 0 && argcount > 1) {
-        int target = atoi(argvalue[1]);
-        motor1.VelocityMode(target);
+    	int motor_id = atoi(argvalue[1]);
+    	Motor *motor = NULL;
+    	if(motor_id == 1){motor = &motor1;}
+    	else if(motor_id == 2){motor = &motor2;}
+    	else {
+    		// print sth here
+    	}
+
+    	if (argcount == 2) {
+    		printf("%lf\r\n." , motor->GetRPM());
+        }
+    	else {
+            int target = atoi(argvalue[2]);
+            motor->VelocityMode(target);
+        }
+z
+    	return true;
     }
+
     return true;
 }
