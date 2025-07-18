@@ -15,6 +15,9 @@ extern UART_HandleTypeDef huart3;
 extern Motor motor1;
 extern Motor motor2;
 
+void uart_print(const char *msg) {
+    HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+}
 
 bool parse(char *command) {
     char *argvalue[4];
@@ -42,11 +45,12 @@ bool parse(char *command) {
     	if(motor_id == 1){motor = &motor1;}
     	else if(motor_id == 2){motor = &motor2;}
     	else {
-    		printf("Motor id out of range");
+    		uart_print("Motor id out of range\r\n");
+    		return false;
     	}
 
     	if (argcount == 2) {
-    		printf("%d\r\n." , motor->GetPwm());
+    		printf("%d\r\n" , motor->GetPwm());
         }
     	else {
             int speed = atoi(argvalue[2]);
@@ -62,11 +66,12 @@ bool parse(char *command) {
     	if(motor_id == 1){motor = &motor1;}
     	else if(motor_id == 2){motor = &motor2;}
     	else {
-    		// print sth here
+    		uart_print("Motor id out of range\r\n");
+    		return false;
     	}
 
     	if (argcount == 2) {
-    		printf("%ld\r\n." , (long) motor->GetPosition());
+    		printf("%ld\r\n" , (long) motor->GetPosition());
         }
     	else {
             int target = atoi(argvalue[2]);
@@ -81,17 +86,17 @@ bool parse(char *command) {
     	if(motor_id == 1){motor = &motor1;}
     	else if(motor_id == 2){motor = &motor2;}
     	else {
-    		// print sth here
+    		uart_print("Motor id out of range\r\n");
+    		return false;
     	}
 
     	if (argcount == 2) {
-    		printf("%lf\r\n." , motor->GetRPM());
+    		printf("%lf\r\n" , motor->GetRPM());
         }
     	else {
             int target = atoi(argvalue[2]);
             motor->VelocityMode(target);
         }
-z
     	return true;
     }
 

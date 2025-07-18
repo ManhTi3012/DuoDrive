@@ -144,6 +144,10 @@ int main(void)
 
   motor1.Init(TIM1, 1, TIM1, 2);
   motor1.InitEncoder(256, TIM2);
+
+  motor2.Init(TIM1, 3, TIM1, 4);
+  motor2.InitEncoder(256, TIM3);
+
   led1.init(GPIOB, GPIO_PIN_6);
   led1.setCycleTime(7);
 
@@ -161,14 +165,10 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  if(HAL_GetTick() - last_time >= 10){
-
 		  motor1.Update(0.01);
-		  encoder = motor1.GetPosition();
-		  speed = motor1.GetRPM();
+		  motor2.Update(0.01);
 		  last_time = HAL_GetTick();
 	  }
-
-
   }
   /* USER CODE END 3 */
 }
@@ -419,7 +419,7 @@ static void MX_TIM3_Init(void)
   htim3.Init.Period = 65535;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
   sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
   sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
   sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
