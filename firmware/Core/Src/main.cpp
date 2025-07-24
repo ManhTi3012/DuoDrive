@@ -541,7 +541,7 @@ static void MX_GPIO_Init(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	// Check start and stop byte
-	if(RxData[0] == '#'){
+	if(RxData[0] == '#' || RxData[0] == '@'){
 		RxReceiving = true;
 		RxIndex = 0;
 		CommandType = RxData[0];

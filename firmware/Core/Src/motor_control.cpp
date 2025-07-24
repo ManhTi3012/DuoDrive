@@ -50,7 +50,7 @@ double Motor::GetRPM(){
 	}
 }
 
-double Motor::GetPPR(){
+int Motor::GetPPR(){
 	if(has_encoder_){
 		return pulse_per_rev_;
 	}
@@ -63,9 +63,16 @@ int16_t Motor::GetPwm(){
 	return target_pwm_;
 }
 
-void Motor::ResetPos(float new_position){
+void Motor::ResetPos(){
+	encoder_port_->CNT = 0;
+	last_encoder_value_ = 0;
+	encoder_position_ = 0;
+}
+
+void Motor::ResetPos(double new_position){
+	encoder_port_->CNT = 0;
+	last_encoder_value_ = 0;
 	encoder_position_ = new_position;
-	last_encoder_value_ = new_position;
 }
 
 void Motor::PositionMode(double target){
