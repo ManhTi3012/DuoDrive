@@ -16,6 +16,8 @@
 
 #define RAMP_SPEED 990
 
+#define PULSE_PER_REV 256
+
 #define VEL_P 9.0
 
 #define VEL_I 0.1

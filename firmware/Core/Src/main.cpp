@@ -47,29 +47,19 @@ FDCAN_HandleTypeDef hfdcan1;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
-TIM_HandleTypeDef htim16;
-TIM_HandleTypeDef htim17;
 
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart3_rx;
 
 /* USER CODE BEGIN PV */
-LED led1;
 Motor motor1;
 Motor motor2;
 // UART command
 uint8_t RxData[10];
-
-uint8_t RxCommand[128];
+uint8_t RxCommand[256];
 uint8_t RxIndex;
 volatile bool RxReceiving = true;
-
-int encoder = 0;
-double speed = 0;
-
-double vel_P = 10.0, vel_D = 0.2, vel_I = 0.2;
-double pos_P = 2.0, pos_D = 0.1, pos_I = 0.5;
-
+char CommandType = '#';  // Default
 
 /* USER CODE END PV */
 
@@ -82,8 +72,6 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_USART3_UART_Init(void);
-static void MX_TIM17_Init(void);
-static void MX_TIM16_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -128,11 +116,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_USART3_UART_Init();
-  MX_TIM17_Init();
-  MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Base_Start_IT(&htim17);
-  HAL_TIM_Base_Start_IT(&htim16);
 
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
@@ -140,16 +124,20 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
   HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
 
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_4);
+
   HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
+  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
 
   motor1.Init(TIM1, 1, TIM1, 2);
-  motor1.InitEncoder(256, TIM2);
+  motor1.InitEncoder(PULSE_PER_REV, TIM2);
 
   motor2.Init(TIM1, 3, TIM1, 4);
-  motor2.InitEncoder(256, TIM3);
-
-  led1.init(GPIOB, GPIO_PIN_6);
-  led1.setCycleTime(7);
+  motor2.InitEncoder(PULSE_PER_REV, TIM3);
 
   uint64_t last_time = 0;
 
@@ -445,70 +433,6 @@ static void MX_TIM3_Init(void)
 }
 
 /**
-  * @brief TIM16 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM16_Init(void)
-{
-
-  /* USER CODE BEGIN TIM16_Init 0 */
-
-  /* USER CODE END TIM16_Init 0 */
-
-  /* USER CODE BEGIN TIM16_Init 1 */
-
-  /* USER CODE END TIM16_Init 1 */
-  htim16.Instance = TIM16;
-  htim16.Init.Prescaler = 80-1;
-  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim16.Init.Period = 39999;
-  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim16.Init.RepetitionCounter = 0;
-  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM16_Init 2 */
-
-  /* USER CODE END TIM16_Init 2 */
-
-}
-
-/**
-  * @brief TIM17 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM17_Init(void)
-{
-
-  /* USER CODE BEGIN TIM17_Init 0 */
-
-  /* USER CODE END TIM17_Init 0 */
-
-  /* USER CODE BEGIN TIM17_Init 1 */
-
-  /* USER CODE END TIM17_Init 1 */
-  htim17.Instance = TIM17;
-  htim17.Init.Prescaler = 1600-1;
-  htim17.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim17.Init.Period = 9999;
-  htim17.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim17.Init.RepetitionCounter = 0;
-  htim17.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim17) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM17_Init 2 */
-
-  /* USER CODE END TIM17_Init 2 */
-
-}
-
-/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -620,13 +544,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	if(RxData[0] == '#'){
 		RxReceiving = true;
 		RxIndex = 0;
+		CommandType = RxData[0];
 	}
 	else if(RxData[0] == '\n'){
 		if (RxReceiving) {
 			RxCommand[RxIndex] = '\0';  // Null
 			RxReceiving = false;
-
-			parse((char *)RxCommand);
+			if (CommandType == '#') parse((char *)RxCommand);
+			else if (CommandType == '@') machineParse((char *)RxCommand);
 		}
 	}
 
@@ -635,7 +560,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		RxIndex ++;
 
 		//over flow
-		if(RxIndex > 127){
+		if(RxIndex > 255){
 			RxReceiving = false;
 			RxIndex = 0;
 		}

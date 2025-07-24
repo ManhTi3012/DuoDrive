@@ -27,6 +27,12 @@ void PID::setOutputLimits(double lowerLimit, double upperLimit){
 	output_lim_[1] = upperLimit;
 }
 
+void PID::getGains(double &p, double &i, double &d){
+	p = Kp;
+	i = Ki;
+	d = Kd;
+}
+
 double PID::calculate(double setpoint, double actual, double dt){
 	double error = setpoint - actual;
 

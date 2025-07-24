@@ -19,14 +19,17 @@ public:
 
     void SetRampTime(uint16_t time_s);
 
+    double GetPPR();
 	double GetPosition();
 	double GetRPM();
 	int16_t GetPwm();
 
+
 	void PositionMode(double target);
 	void VelocityMode(double target);
 	void OpenLoopMode(int16_t pwm);
-	void ResetPos();
+	void SetPPR(double ppr);
+	void ResetPos(float new_position = 0.0d);
 
     struct {
         PID position;  // Outer loop (position → velocity)

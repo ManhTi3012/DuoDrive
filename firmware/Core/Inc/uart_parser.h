@@ -11,6 +11,6 @@
 
 
 bool parse(char *command);
-
+bool machineParse(char *command);
 
 #endif /* INC_UART_PARSER_H_ */

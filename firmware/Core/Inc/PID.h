@@ -15,6 +15,8 @@ public:
     void setGains(double set_Kp, double set_Ki, double set_Kd);
     void setOutputLimits(double lowerLimit, double upperLimit);
 
+    void getGains(double &p, double &i, double &d);
+
 private:
     double Kp, Ki, Kd;
     double integral_ = 0;
