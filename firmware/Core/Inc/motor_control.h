@@ -71,7 +71,7 @@ private:
 	double pulse_per_rev_;
 	TIM_TypeDef *encoder_port_;
 
-	double encoder_position_;
+	int64_t encoder_position_;
 	double encoder_speed_;
 
 	uint16_t last_encoder_value_ = 0;
