@@ -5,7 +5,6 @@
 *.mxproject
 .project
 .cproject
-
 # === Build output ===
 Debug/
 Release/
@@ -26,3 +25,5 @@ build/
 Thumbs.db
 *.xlsx
 *.zip
+# === Kicad Specific ===
+no_outline/
