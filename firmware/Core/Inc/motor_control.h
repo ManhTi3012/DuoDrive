@@ -14,42 +14,64 @@
 
 class Motor {
 public:
-	bool Init(TIM_TypeDef *timer_left, uint8_t channel_left,TIM_TypeDef *timer_right, uint8_t channel_right);
-	void InitEncoder(double ppr,TIM_TypeDef *timer_encoder);
-
-    void SetRampTime(uint16_t time_s);
-
-    int GetPPR();
-	double GetPosition();
-	double GetRPM();
-	int16_t GetPwm();
-
+	bool Init(TIM_TypeDef *timer_left, uint8_t channel_left,TIM_TypeDef *timer_right, uint8_t channel_right, TIM_TypeDef* pid_timer);
+	void InitEncoder(TIM_TypeDef *timer_encoder);
+	void LoadConfig(MotorConfig config);
 
 	void PositionMode(double target);
 	void VelocityMode(double target);
 	void OpenLoopMode(int16_t pwm);
-	void SetPPR(double ppr);
+
 	void ResetPos();
-	void ResetPos(double new_position);
+	void ResetPos(int64_t new_position);
+
+	void SetMaxVel(double max_vel);
+	void SetAlpha(double alpha);
+
+	void ReverseEncoder(bool reverse);
+
+	void SetARR(uint16_t arr);
+	void SetPScale(uint16_t pscale);
+
+	void SetPPR(uint16_t ppr);
+	void SetRampSpeed(uint16_t ramp_speed);
+
+	double GetMaxVel();
+	double GetAlpha();
+
+	bool IsEncoderReversed();
+
+    uint16_t GetPScale();
+    uint16_t GetARR();
+
+	uint16_t GetPPR();
+	uint16_t GetRampSpeed();
+
+	int64_t GetPosition();
+	int16_t GetPwm();
+	double GetRPM();
+
+	void UpdateData(double dt);
+	void PositionLoop(double dt);
+	void VelocityLoop(double dt);
+
+	void Update(double dt);
 
     struct {
         PID position;  // Outer loop (position → velocity)
         PID velocity;  // Inner loop (velocity → PWM)
     } pid;
 
-	void Update(double dt);
-
 private:
-	void SetPwm(int16_t pwm);
 
+	TIM_TypeDef *L_TIM;
+	uint8_t L_CHN;
+	TIM_TypeDef *R_TIM;
+	uint8_t R_CHN;
+	TIM_TypeDef* pid_timer_;
+	void SetPwm(int16_t pwm);
 	void RampPwm(double dt);
 
-    double current_pwm_ = 0;
-    int16_t target_pwm_ = 0;
-    double ramp_speed = 1980;
-    double ramp_time_s_ = 0.5f;
-
-	void UpdateData(double dt);
 
 	enum ControlMode {
 	    POSITION,
@@ -57,24 +79,22 @@ private:
 		OPEN_LOOP
 	} current_mode_ = OPEN_LOOP;
 
+	MotorConfig config_;
+
+	int16_t target_pwm_ = 0;
+    double current_pwm_ = 0;
+
     double target_velocity_ = 0;
+
     double target_position_ = 0;
 
-	TIM_TypeDef *L_TIM;
-	uint8_t L_CHN;
-	TIM_TypeDef *R_TIM;
-	uint8_t R_CHN;
-
 	bool has_encoder_ = false;
-	bool reverse_encoder_ = true;
-
-	double pulse_per_rev_;
-	TIM_TypeDef *encoder_port_;
-
-	int64_t encoder_position_;
 	double encoder_speed_;
 
-	uint16_t last_encoder_value_ = 0;
+	TIM_TypeDef *encoder_port_;
+	volatile int64_t encoder_position_;
+	volatile uint16_t last_encoder_value_ = 0;
+
 };
 
 #endif /* INC_MOTOR_CONTROL_H_ */

@@ -5,6 +5,7 @@
  *      Author: Ti Manh
  */
 #include "uart_parser.h"
+#include "flash_store_data.h"
 #include "main.h"
 #include <cstring>
 #include <stdlib.h>
@@ -14,6 +15,7 @@
 extern UART_HandleTypeDef huart3;
 extern Motor motor1;
 extern Motor motor2;
+extern DeviceConfig main_config;
 
 void uart_print(const char *msg) {
     HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
@@ -71,7 +73,7 @@ bool parse(char *command) {
 
     else if (strcmp(argvalue[0], "POS") == 0) {
     	if (argcount == 2) {
-    		printf("%f\r\n" , motor->GetPosition());
+    		printf("%lld\r\n" , motor->GetPosition());
         }
     	else if (argcount == 3){
             int target = atoi(argvalue[2]);
@@ -180,7 +182,41 @@ bool parse(char *command) {
     	}
     	return true;
     }
-    return true;
+    else if (strcmp(argvalue[0], "PARR") == 0) {
+    	if (argcount == 2) {
+    		printf("M%d PARR: %ld\r\n",motor_id,TIM16->ARR);
+        }
+    	else if (argcount == 3){
+            int target = atoi(argvalue[2]);
+            TIM16->ARR = target;
+            printf("M%d PARR Set: %d\r\n",motor_id, target);
+        }
+    	else{
+        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+        	return false;
+    	}
+    	return true;
+    }
+    else if (strcmp(argvalue[0], "VARR") == 0) {
+    	if (argcount == 2) {
+    		printf("M%d VARR: %ld\r\n",motor_id,TIM17->ARR);
+        }
+    	else if (argcount == 3){
+            int target = atoi(argvalue[2]);
+            printf("M%d PARR Set: %d\r\n",motor_id, target);
+        }
+    	else{
+        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+        	return false;
+    	}
+    	return true;
+    }
+    else if (strcmp(argvalue[0], "INFO") == 0) {
+        uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+    	return true;
+    }
+    uart_print("WRONG COMMAND\r\n");
+    return false;
 }
 bool machineParse(char *command) {
     char *argvalue[3];
@@ -210,7 +246,7 @@ bool machineParse(char *command) {
 
     if (cmd == 'P') {
     	if (argcount == 1) {
-    		printf("%f\r\n" , motor->GetPosition());
+    		printf("%lld\r\n" , motor->GetPosition());
         }
     	else if (argcount == 2){
             float target = atof(argvalue[1]);
@@ -252,6 +288,5 @@ bool machineParse(char *command) {
     }
 
     uart_print("E2\r\n");
-
     return false;
 }
