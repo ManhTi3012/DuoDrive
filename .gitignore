@@ -25,5 +25,7 @@ build/
 Thumbs.db
 *.xlsx
 *.zip
+*.csv
 # === Kicad Specific ===
 no_outline/
+production/

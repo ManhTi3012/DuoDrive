@@ -1,4 +1,4 @@
-24782777613315612
+24784544551045077
 1_NoOutline
 C_0603_1608Metric
 Capacitor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator
@@ -99700,3 +99700,10 @@ Varistor VF
 0
 2
 2
+no_outline
+QR
+
+
+0
+0
+0
