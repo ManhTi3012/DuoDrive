@@ -15,7 +15,7 @@
 extern UART_HandleTypeDef huart3;
 extern Motor motor1;
 extern Motor motor2;
-extern DeviceConfig main_config;
+extern void save_config_to_flash();
 
 void uart_print(const char *msg) {
     HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
@@ -45,15 +45,38 @@ bool parse(char *command) {
 		return false;
 	}
 
-    if (strcmp(argvalue[0], "led") == 0) {
-    	// test function, beware when using
-        if (strcmp(argvalue[1], "on") == 0) {
-            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-        } else if (strcmp(argvalue[1], "off") == 0) {
-            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-        }
-    }
 
+    if (strcmp(argvalue[0], "POS") == 0) {
+    	if (argcount == 2) {
+    		printf("%lld\r\n" , motor->GetPosition());
+        }
+    	else if (argcount == 3){
+            int target = atoi(argvalue[2]);
+            printf("M%d Position Set:%d\r\n",motor_id, target);
+            motor->PositionMode(target);
+        }
+    	else{
+        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+        	return false;
+    	}
+
+    	return true;
+    }
+    else if (strcmp(argvalue[0], "VEL") == 0) {
+    	if (argcount == 2) {
+    		printf("%f\r\n" , motor->GetRPM());
+        }
+    	else if (argcount == 3){
+            double target = atof(argvalue[2]);
+            motor->VelocityMode(target);
+            printf("M%d Velocity Set:%.3f\r\n",motor_id, target);
+        }
+    	else{
+        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+        	return false;
+    	}
+    	return true;
+    }
     else if (strcmp(argvalue[0], "PWM") == 0) {
     	if (argcount == 2) {
     		printf("%d\r\n" , motor->GetPwm());
@@ -71,31 +94,109 @@ bool parse(char *command) {
     	return true;
     }
 
-    else if (strcmp(argvalue[0], "POS") == 0) {
+    else if (strcmp(argvalue[0], "ZERO") == 0) {
     	if (argcount == 2) {
-    		printf("%lld\r\n" , motor->GetPosition());
+    		motor->ResetPos();
+    		printf("M%d Encoder Pos Set: 0\r\n",motor_id);
         }
     	else if (argcount == 3){
             int target = atoi(argvalue[2]);
-            printf("M%d Position Set:%d\r\n",motor_id, target);
-            motor->PositionMode(target);
+            motor->ResetPos(target);
+            printf("M%d Encoder Pos Set: %d\r\n",motor_id, target);
         }
     	else{
         	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
         	return false;
     	}
-
     	return true;
     }
 
-    else if (strcmp(argvalue[0], "VEL") == 0) {
+    else if (strcmp(argvalue[0], "MVEL") == 0) {
     	if (argcount == 2) {
-    		printf("%f\r\n" , motor->GetRPM());
+    		printf("%lf\r\n" , motor->GetMaxVel());
         }
     	else if (argcount == 3){
-            double target = atof(argvalue[2]);
-            motor->VelocityMode(target);
-            printf("M%d Velocity Set:%.3f\r\n",motor_id, target);
+            int target = atoi(argvalue[2]);
+            printf("M%d Maximum Velocity Set:%d\r\n",motor_id, target);
+            motor->SetMaxVel(target);
+        }
+    	else{
+        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+        	return false;
+    	}
+    	return true;
+    }
+    else if (strcmp(argvalue[0], "ALP") == 0) {
+    	if (argcount == 2) {
+    		printf("%lf\r\n" , motor->GetAlpha());
+        }
+    	else if (argcount == 3){
+            int target = atoi(argvalue[2]);
+            printf("M%d Smoothing Alpha Set:%d\r\n",motor_id, target);
+            motor->SetAlpha(target);
+        }
+    	else{
+        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+        	return false;
+    	}
+    	return true;
+    }
+
+    else if (strcmp(argvalue[0], "RVS") == 0) {
+    	if (argcount == 2) {
+    		printf("%d\r\n" , motor->IsEncoderReversed());
+        }
+    	else if (argcount == 3){
+            int target = atoi(argvalue[2]);
+            printf("M%d Reverse Encoder:%d\r\n",motor_id, target);
+            motor->ReverseEncoder(target);
+        }
+    	else{
+        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+        	return false;
+    	}
+    	return true;
+    }
+
+    else if (strcmp(argvalue[0], "ARR") == 0) {
+    	if (argcount == 2) {
+    		printf("%d\r\n" , motor->GetARR());
+        }
+    	else if (argcount == 3){
+            int target = atoi(argvalue[2]);
+            printf("M%d PID ARR Set:%d\r\n",motor_id, target);
+            motor->ReverseEncoder(target);
+        }
+    	else{
+        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+        	return false;
+    	}
+    	return true;
+    }
+
+    else if (strcmp(argvalue[0], "VSCL") == 0) {
+    	if (argcount == 2) {
+    		printf("%d\r\n" , motor->GetVScale());
+        }
+    	else if (argcount == 3){
+            int target = atoi(argvalue[2]);
+            printf("M%d VPID ARR Set:%d\r\n",motor_id, target);
+            motor->SetVScale(target);
+        }
+    	else{
+        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+        	return false;
+    	}
+    	return true;
+    }
+    else if (strcmp(argvalue[0], "PSCL") == 0) {
+    	if (argcount == 2) {
+    		printf("%d\r\n" , motor->GetPScale());
+        }
+    	else if (argcount == 3){
+            int target = atoi(argvalue[2]);
+            printf("M%d PPID ARR Set:%d\r\n",motor_id, target);
+            motor->SetPScale(target);
         }
     	else{
         	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
@@ -119,13 +220,30 @@ bool parse(char *command) {
     	}
     	return true;
     }
+
+    else if (strcmp(argvalue[0], "RAMP") == 0) {
+    	if (argcount == 2) {
+    		printf("%d\r\n" , motor->GetRampSpeed());
+        }
+    	else if (argcount == 3){
+            int target = atoi(argvalue[2]);
+            printf("M%d Ramp Speed Set:%d\r\n",motor_id, target);
+            motor->SetRampSpeed(target);
+        }
+    	else{
+        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+        	return false;
+    	}
+    	return true;
+    }
+
     else if (strcmp(argvalue[0], "PIDP") == 0) {
     	if(argcount == 5){
             double kp = atof(argvalue[2]);
             double ki = atof(argvalue[3]);
             double kd = atof(argvalue[4]);
 
-            motor->pid.position.setGains(kp, ki, kd);
+            motor->SetGainP(kp, ki, kd);
 
             printf("M%d Position PID set: KP=%.3f, KI=%.3f, KD=%.3f\r\n",motor_id, kp, ki, kd);
 
@@ -133,7 +251,7 @@ bool parse(char *command) {
     	}
     	else if(argcount == 2){
     		double kp,ki,kd;
-    		motor->pid.position.getGains(kp, ki, kd);
+    		motor->GetGainP(kp, ki, kd);
     		printf("%.3f %.3f %.3f\r\n", kp, ki, kd);
     		return true;
     	}
@@ -149,7 +267,7 @@ bool parse(char *command) {
     		double ki = atof(argvalue[3]);
     		double kd = atof(argvalue[4]);
 
-            motor->pid.velocity.setGains(kp, ki, kd);
+            motor->SetGainV(kp, ki, kd);
 
             printf("M%d Velocity PID set: KP=%.3f, KI=%.3f, KD=%.3f\r\n",motor_id, kp, ki, kd);
 
@@ -157,7 +275,7 @@ bool parse(char *command) {
     	}
     	else if(argcount == 2){
     		double kp,ki,kd;
-    		motor->pid.velocity.getGains(kp, ki, kd);
+    		motor->GetGainV(kp, ki, kd);
     		printf("%.3f %.3f %.3f\r\n", kp, ki, kd);
     		return true;
     	}
@@ -166,53 +284,25 @@ bool parse(char *command) {
         	return false;
     	}
     }
-    else if (strcmp(argvalue[0], "ZERO") == 0) {
-    	if (argcount == 2) {
-    		motor->ResetPos();
-    		printf("M%d Encoder Pos Set: 0\r\n",motor_id);
-        }
-    	else if (argcount == 3){
-            int target = atoi(argvalue[2]);
-            motor->ResetPos(target);
-            printf("M%d Encoder Pos Set: %d\r\n",motor_id, target);
-        }
-    	else{
-        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
-        	return false;
-    	}
-    	return true;
-    }
-    else if (strcmp(argvalue[0], "PARR") == 0) {
-    	if (argcount == 2) {
-    		printf("M%d PARR: %ld\r\n",motor_id,TIM16->ARR);
-        }
-    	else if (argcount == 3){
-            int target = atoi(argvalue[2]);
-            TIM16->ARR = target;
-            printf("M%d PARR Set: %d\r\n",motor_id, target);
-        }
-    	else{
-        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
-        	return false;
-    	}
-    	return true;
-    }
-    else if (strcmp(argvalue[0], "VARR") == 0) {
-    	if (argcount == 2) {
-    		printf("M%d VARR: %ld\r\n",motor_id,TIM17->ARR);
-        }
-    	else if (argcount == 3){
-            int target = atoi(argvalue[2]);
-            printf("M%d PARR Set: %d\r\n",motor_id, target);
-        }
-    	else{
-        	uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
-        	return false;
-    	}
-    	return true;
-    }
+
     else if (strcmp(argvalue[0], "INFO") == 0) {
         uart_print("COMMAND PARSING FAILED: TOO MUCH ARGUMENT\r\n");
+    	return true;
+    }
+    else if (strcmp(argvalue[0], "SAVE") == 0) {
+    	MotorConfig m1 = motor1.GetConfig();
+    	MotorConfig m2 = motor2.GetConfig();
+
+    	motor1.GetGainP(m1.position_kp, m1.position_ki, m1.position_kd);
+    	motor1.GetGainV(m1.velocity_kp, m1.velocity_ki, m1.velocity_kd);
+
+    	motor2.GetGainP(m2.position_kp, m2.position_ki, m2.position_kd);
+    	motor2.GetGainV(m2.velocity_kp, m2.velocity_ki, m2.velocity_kd);
+
+    	current_config.motor1 = m1;
+    	current_config.motor2 = m2;
+    	save_config_to_flash();
+    	uart_print("CONFIG SAVED\r\n");
     	return true;
     }
     uart_print("WRONG COMMAND\r\n");

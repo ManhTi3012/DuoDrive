@@ -21,19 +21,20 @@ const MotorConfig default_motor = {
 
 	.reverse_encoder = false,
 
-	.pid_arr = 100,
+	.pid_arr = 99,
 	.pos_scale = 2,
+	.vel_scale = 1,
 
 	.encoder_ppr = 256,
 	.ramp_speed = 990,
 };
 
 const DeviceConfig default_config = {
-    .version = 72925,
+    .version = 250807,
     .crc = 0,
     .motor1 = default_motor,
     .motor2 = default_motor,
-    .can_id = 1
+    .can_id = 1,
 };
 DeviceConfig current_config;
 

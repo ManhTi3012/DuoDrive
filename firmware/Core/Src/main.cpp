@@ -26,6 +26,7 @@
 #include "uart_parser.h"
 #include "flash_store_data.h"
 #include "constants.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,13 +45,14 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+CRC_HandleTypeDef hcrc;
+
 FDCAN_HandleTypeDef hfdcan1;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim6;
-TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim16;
 TIM_HandleTypeDef htim17;
 
@@ -59,16 +61,23 @@ DMA_HandleTypeDef hdma_usart3_rx;
 
 /* USER CODE BEGIN PV */
 // Config
-DeviceConfig main_config;
-
 Motor motor1;
 Motor motor2;
 // UART command
-uint8_t RxData[10];
-uint8_t RxCommand[256];
-uint8_t RxIndex;
-volatile bool RxReceiving = true;
-char CommandType = '#';  // Default
+//uint8_t RxData[10];
+//uint8_t RxCommand[256];
+//uint8_t RxIndex;
+//volatile bool RxReceiving = true;
+//char CommandType = '#';  // Default
+
+#define RX_BUFFER_SIZE 256
+
+uint8_t DMA_RX_Buffer[RX_BUFFER_SIZE]; // DMA circular buffer
+uint8_t Parse_Buffer[RX_BUFFER_SIZE];  // Final buffer to parse
+
+volatile uint16_t old_pos = 0;
+volatile uint8_t data_ready = 0;
+volatile uint8_t uart_processing = 0;
 
 /* USER CODE END PV */
 
@@ -83,10 +92,10 @@ static void MX_TIM3_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_TIM16_Init(void);
 static void MX_TIM17_Init(void);
+static void MX_CRC_Init(void);
 static void MX_TIM6_Init(void);
-static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
-
+extern "C" void BufferProcessing(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -131,8 +140,8 @@ int main(void)
   MX_USART3_UART_Init();
   MX_TIM16_Init();
   MX_TIM17_Init();
+  MX_CRC_Init();
   MX_TIM6_Init();
-  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
@@ -151,22 +160,24 @@ int main(void)
 
   HAL_TIM_Base_Start_IT(&htim16);
   HAL_TIM_Base_Start_IT(&htim17);
+  HAL_TIM_Base_Start_IT(&htim6);
 
-  //read_flash_memory(0x0801F800, (uint8_t *)&main_config, sizeof(main_config));
-
-  main_config = default_config;
+  load_config_from_flash();
 
   motor1.Init(TIM1, 1, TIM1, 2, TIM17);
   motor1.InitEncoder(TIM2);
-  motor1.LoadConfig(main_config.motor1);
+  motor1.LoadConfig(current_config.motor1);
 
   motor2.Init(TIM1, 3, TIM1, 4, TIM16);
   motor2.InitEncoder(TIM3);
-  motor2.LoadConfig(main_config.motor2);
+  motor2.LoadConfig(current_config.motor2);
 
 
   // Start UART DMA
-  HAL_UART_Receive_DMA(&huart3, RxData, 1);
+//  HAL_UART_Receive_DMA(&huart3, RxData, 1);
+  HAL_UART_Receive_DMA(&huart3, DMA_RX_Buffer, RX_BUFFER_SIZE);
+  __HAL_UART_ENABLE_IT(&huart3, UART_IT_IDLE);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -176,7 +187,25 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if (data_ready) {
+	      data_ready = 0;
 
+	      char *start = strchr((char *)Parse_Buffer, '#');
+	      if (!start) start = strchr((char *)Parse_Buffer, '@');
+
+	      while (start) {
+	          char *end = strchr(start, '\n');
+	          if (!end) break;
+
+	          *end = '\0';
+
+	          if (start[0] == '#') parse(start + 1);
+	          else if (start[0] == '@') machineParse(start + 1);
+
+	          start = strchr(end + 1, '#');
+	          if (!start) start = strchr(end + 1, '@');
+	      }
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -225,6 +254,37 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief CRC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CRC_Init(void)
+{
+
+  /* USER CODE BEGIN CRC_Init 0 */
+
+  /* USER CODE END CRC_Init 0 */
+
+  /* USER CODE BEGIN CRC_Init 1 */
+
+  /* USER CODE END CRC_Init 1 */
+  hcrc.Instance = CRC;
+  hcrc.Init.DefaultPolynomialUse = DEFAULT_POLYNOMIAL_ENABLE;
+  hcrc.Init.DefaultInitValueUse = DEFAULT_INIT_VALUE_ENABLE;
+  hcrc.Init.InputDataInversionMode = CRC_INPUTDATA_INVERSION_NONE;
+  hcrc.Init.OutputDataInversionMode = CRC_OUTPUTDATA_INVERSION_DISABLE;
+  hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_BYTES;
+  if (HAL_CRC_Init(&hcrc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN CRC_Init 2 */
+
+  /* USER CODE END CRC_Init 2 */
+
 }
 
 /**
@@ -470,9 +530,9 @@ static void MX_TIM6_Init(void)
 
   /* USER CODE END TIM6_Init 1 */
   htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 16000-1;
+  htim6.Init.Prescaler = 15;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 65535;
+  htim6.Init.Period = 49999;
   htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
@@ -487,44 +547,6 @@ static void MX_TIM6_Init(void)
   /* USER CODE BEGIN TIM6_Init 2 */
 
   /* USER CODE END TIM6_Init 2 */
-
-}
-
-/**
-  * @brief TIM7 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM7_Init(void)
-{
-
-  /* USER CODE BEGIN TIM7_Init 0 */
-
-  /* USER CODE END TIM7_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM7_Init 1 */
-
-  /* USER CODE END TIM7_Init 1 */
-  htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 16000-1;
-  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 65535;
-  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM7_Init 2 */
-
-  /* USER CODE END TIM7_Init 2 */
 
 }
 
@@ -576,7 +598,7 @@ static void MX_TIM17_Init(void)
 
   /* USER CODE END TIM17_Init 1 */
   htim17.Instance = TIM17;
-  htim17.Init.Prescaler = 160-1;
+  htim17.Init.Prescaler = 16000-1;
   htim17.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim17.Init.Period = 99;
   htim17.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -697,59 +719,116 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void BufferProcessing(){
+	if (!uart_processing) {
+	    uart_processing = 1;
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	// Check start and stop byte
-	if(RxData[0] == '#' || RxData[0] == '@'){
-		RxReceiving = true;
-		RxIndex = 0;
-		CommandType = RxData[0];
+	    uint16_t pos = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart3.hdmarx);
+
+	    if (pos != old_pos) {
+	        uint16_t len;
+	        if (pos > old_pos) {
+	            len = pos - old_pos;
+	            memcpy(Parse_Buffer, &DMA_RX_Buffer[old_pos], len);
+	        } else {
+	            len = RX_BUFFER_SIZE - old_pos;
+	            memcpy(Parse_Buffer, &DMA_RX_Buffer[old_pos], len);
+	            memcpy(Parse_Buffer + len, DMA_RX_Buffer, pos);
+	            len += pos;
+	        }
+
+	        Parse_Buffer[len] = '\0';
+	        old_pos = pos;
+	        data_ready = 1;
+	    }
+
+	    uart_processing = 0;
 	}
-	else if(RxData[0] == '\n'){
-		if (RxReceiving) {
-			RxCommand[RxIndex] = '\0';  // Null
-			RxReceiving = false;
-			if (CommandType == '#') parse((char *)RxCommand);
-			else if (CommandType == '@') machineParse((char *)RxCommand);
-		}
-	}
-
-	else if(RxReceiving){
-		RxCommand[RxIndex] = RxData[0];
-		RxIndex ++;
-
-		//over flow
-		if(RxIndex > 255){
-			RxReceiving = false;
-			RxIndex = 0;
-		}
-	}
-
-	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
-	HAL_UART_Receive_DMA(&huart3, RxData, 1);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 {
 	if(htim->Instance == TIM17){
+		static uint16_t vel_counter = 0;
+		static uint16_t pos_counter = 0;
 
-		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_6);
-		static uint16_t count = 0;
-		double dt = 0.01; //(double)(motor1.GetARR() + 1) / 10.00;
+		double dt = (double)(motor1.GetARR() + 1) / 10000;
 		uint16_t pos_loop_scale = motor1.GetPScale();
-
-		motor1.UpdateData(dt);
-
-		motor1.VelocityLoop(dt);
-
-		if(pos_loop_scale && count++ % pos_loop_scale == 0){
-			motor1.PositionLoop(dt);
+		uint16_t vel_loop_scale = motor1.GetVScale();
+		// Velocity loop
+		if (vel_loop_scale > 0) {
+		    if (vel_counter > 0) {
+		        vel_counter--;
+		    }
+		    if (vel_counter == 0) {
+		        motor1.UpdateData(dt);
+		        motor1.VelocityLoop(dt);
+		        vel_counter = vel_loop_scale;
+		    }
 		}
+		// Position loop
+		if (pos_loop_scale > 0) {
+		    if (pos_counter > 0) {
+		        pos_counter--;
+		    }
+		    if (pos_counter == 0) {
+		        motor1.PositionLoop(dt);
+		        pos_counter = pos_loop_scale;
+		    }
+		}
+
 	}
 	if(htim->Instance == TIM16){
-		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+		static uint16_t vel_counter = 0;
+		static uint16_t pos_counter = 0;
+
+		double dt = (double)(motor2.GetARR() + 1) / 10000;
+		uint16_t pos_loop_scale = motor2.GetPScale();
+		uint16_t vel_loop_scale = motor2.GetVScale();
+		// Velocity loop
+		if (vel_loop_scale > 0) {
+		    if (vel_counter > 0) {
+		        vel_counter--;
+		    }
+
+		    if (vel_counter == 0) {
+		        motor2.UpdateData(dt);
+		        motor2.VelocityLoop(dt);
+		        vel_counter = vel_loop_scale;
+		    }
+		}
+		// Position loop
+		if (pos_loop_scale > 0) {
+		    if (pos_counter > 0) {
+		        pos_counter--;
+		    }
+
+		    if (pos_counter == 0) {
+		        motor2.PositionLoop(dt);
+		        pos_counter = pos_loop_scale;
+		    }
+		}
 	}
+    if (htim->Instance == TIM6) {
+        uint16_t pos = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart3.hdmarx);
+
+        if (pos != old_pos) {
+            uint16_t len;
+            if (pos > old_pos) {
+                len = pos - old_pos;
+                memcpy(Parse_Buffer, &DMA_RX_Buffer[old_pos], len);
+            } else {
+                len = RX_BUFFER_SIZE - old_pos;
+                memcpy(Parse_Buffer, &DMA_RX_Buffer[old_pos], len);
+                memcpy(Parse_Buffer + len, DMA_RX_Buffer, pos);
+                len += pos;
+            }
+
+            Parse_Buffer[len] = '\0';
+            old_pos = pos;
+            data_ready = 1;  // This will be handled in main loop
+        }
+    }
 }
 /* USER CODE END 4 */
 

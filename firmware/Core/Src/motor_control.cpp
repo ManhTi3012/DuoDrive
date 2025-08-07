@@ -6,6 +6,9 @@
  */
 
 #include "motor_control.h"
+#include <stdlib.h>
+#include <stdio.h>
+
 
 bool Motor::Init(TIM_TypeDef *timer_left, uint8_t channel_left,TIM_TypeDef *timer_right, uint8_t channel_right, TIM_TypeDef* pid_timer){
 	if(channel_right > 4 || channel_left > 4){
@@ -35,6 +38,10 @@ void Motor::LoadConfig(MotorConfig config){
 
     pid.velocity.setGains(config_.velocity_kp, config_.velocity_ki, config_.velocity_kd);
     pid.velocity.setOutputLimits(-MAX_DUTY, MAX_DUTY);
+}
+
+MotorConfig Motor::GetConfig() {
+    return config_;
 }
 
 void Motor::PositionMode(double target){
@@ -84,8 +91,12 @@ void Motor::ReverseEncoder(bool reverse){
 
 void Motor::SetARR(uint16_t arr){
 	config_.pid_arr = arr;
+	pid_timer_->ARR = arr;
 }
 
+void Motor::SetVScale(uint16_t vscale){
+	config_.vel_scale = vscale;
+}
 void Motor::SetPScale(uint16_t pscale){
 	config_.pos_scale = pscale;
 }
@@ -97,6 +108,13 @@ void Motor::SetRampSpeed(uint16_t ramp_speed){
 	config_.ramp_speed = ramp_speed;
 }
 
+void Motor::SetGainP(double set_Kp, double set_Ki, double set_Kd){
+	pid.position.setGains(set_Kp, set_Ki, set_Kd);
+}
+void Motor::SetGainV(double set_Kp, double set_Ki, double set_Kd){
+	pid.velocity.setGains(set_Kp, set_Ki, set_Kd);
+}
+
 double Motor::GetMaxVel(){
 	return config_.max_velocity;
 }
@@ -105,25 +123,34 @@ double Motor::GetAlpha(){
 	return config_.smoothing_alpha;
 }
 
-
-uint16_t Motor::GetPScale(){
-	return config_.pos_scale;
-}
-
-uint16_t Motor::GetARR(){
-	return config_.pid_arr;
-}
-
 bool Motor::IsEncoderReversed(){
 	return config_.reverse_encoder;
 }
 
+
+
+uint16_t Motor::GetARR(){
+	return config_.pid_arr;
+}
+uint16_t Motor::GetPScale(){
+	return config_.pos_scale;
+}
+uint16_t Motor::GetVScale(){
+	return config_.vel_scale;
+}
 uint16_t Motor::GetPPR(){
 	return config_.encoder_ppr;
 }
 
 uint16_t Motor::GetRampSpeed(){
 	return config_.ramp_speed;
+}
+
+void Motor::GetGainP(double &p, double &i, double &d){
+	pid.position.getGains(p, i, d);
+}
+void Motor::GetGainV(double &p, double &i, double &d){
+	pid.velocity.getGains(p, i, d);
 }
 
 int64_t Motor::GetPosition(){
@@ -186,24 +213,36 @@ void Motor::VelocityLoop(double dt){
 }
 
 void Motor::UpdateData(double dt){
-	if(!has_encoder_){return;}
-	else{
-		uint16_t current_encoder_value = encoder_port_ -> CNT;
-		int16_t delta = (int16_t)(current_encoder_value - last_encoder_value_);
+	uint16_t current_encoder_value = encoder_port_ -> CNT;
+	int32_t delta = (int16_t)(current_encoder_value - last_encoder_value_);
 
-	    if (config_.reverse_encoder) {
-	        delta = -delta;
-	    }
-	    double raw_speed = static_cast<double>(delta) / dt;
-	    raw_speed = raw_speed / config_.encoder_ppr * 60.0;
-
-	    encoder_speed_ = (double) config_.smoothing_alpha * raw_speed + (1.0 - config_.smoothing_alpha) * encoder_speed_;
-
-	    if(delta == 0){encoder_speed_ = 0;}
-
-		encoder_position_ += delta;
-		last_encoder_value_ = current_encoder_value;
+	if (config_.reverse_encoder) {
+		delta = -delta;
 	}
+
+	delta_history[history_index] = delta;
+	history_index = (history_index + 1) % VELOCITY_HISTORY_SIZE;
+
+	int32_t delta_sum = 0;
+	for(int i = 0; i < VELOCITY_HISTORY_SIZE; ++i){
+	    delta_sum += delta_history[i];
+	}
+
+	double average_delta = (double)delta_sum / VELOCITY_HISTORY_SIZE;
+
+	double raw_speed = (double) average_delta / dt;
+	raw_speed = raw_speed / config_.encoder_ppr * 60.0;
+
+	if (!(encoder_speed_ == encoder_speed_)) {
+	    encoder_speed_ = raw_speed;
+	}
+
+	encoder_speed_ = (double) config_.smoothing_alpha * raw_speed + (1.0 - config_.smoothing_alpha) * encoder_speed_;
+
+	//if(delta == 0){encoder_speed_ = 0;}
+
+	encoder_position_ += delta;
+	last_encoder_value_ = current_encoder_value;
 }
 
 void Motor::SetPwm(int16_t pwm){

@@ -14,5 +14,7 @@
 void store_flash_memory(uint32_t memory_address, uint8_t *data, uint16_t data_length);
 void read_flash_memory(uint32_t memory_address, uint8_t *data, uint16_t data_length);
 
+void save_config_to_flash();
+void load_config_from_flash();
 
 #endif /* INC_FLASH_STORE_DATA_H_ */

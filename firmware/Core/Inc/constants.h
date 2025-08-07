@@ -15,6 +15,8 @@
 
 #define FLASH_CONFIG_ADDRESS 0x0801F800
 
+#define VELOCITY_HISTORY_SIZE 10
+
 #define SERIAL_SPEED 115200
 
 typedef struct {
@@ -33,6 +35,7 @@ typedef struct {
 
     uint16_t pid_arr;
     uint16_t pos_scale;
+    uint16_t vel_scale;
 
     uint16_t encoder_ppr;
     uint16_t ramp_speed;
