@@ -37,7 +37,7 @@ typedef struct {
     uint16_t pos_scale;
     uint16_t vel_scale;
 
-    uint16_t encoder_ppr;
+    uint32_t encoder_ppr;
     uint16_t ramp_speed;
 
 } MotorConfig;

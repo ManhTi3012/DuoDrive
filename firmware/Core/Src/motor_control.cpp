@@ -101,7 +101,7 @@ void Motor::SetPScale(uint16_t pscale){
 	config_.pos_scale = pscale;
 }
 
-void Motor::SetPPR(uint16_t ppr){
+void Motor::SetPPR(uint32_t ppr){
 	config_.encoder_ppr = ppr;
 }
 void Motor::SetRampSpeed(uint16_t ramp_speed){
@@ -138,7 +138,7 @@ uint16_t Motor::GetPScale(){
 uint16_t Motor::GetVScale(){
 	return config_.vel_scale;
 }
-uint16_t Motor::GetPPR(){
+uint32_t Motor::GetPPR(){
 	return config_.encoder_ppr;
 }
 

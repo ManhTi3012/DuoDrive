@@ -30,7 +30,7 @@ const MotorConfig default_motor = {
 };
 
 const DeviceConfig default_config = {
-    .version = 250807,
+    .version = 250808,
     .crc = 0,
     .motor1 = default_motor,
     .motor2 = default_motor,

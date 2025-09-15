@@ -207,7 +207,7 @@ bool parse(char *command) {
 
     else if (strcmp(argvalue[0], "PPR") == 0) {
     	if (argcount == 2) {
-    		printf("%d\r\n" , motor->GetPPR());
+    		printf("%ld\r\n" , motor->GetPPR());
         }
     	else if (argcount == 3){
             int target = atoi(argvalue[2]);

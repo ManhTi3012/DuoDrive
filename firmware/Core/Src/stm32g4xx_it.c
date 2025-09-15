@@ -90,6 +90,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
+  NVIC_SystemReset();
 
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
@@ -256,7 +257,7 @@ void USART3_IRQHandler(void)
   /* USER CODE BEGIN USART3_IRQn 0 */
 	if (__HAL_UART_GET_FLAG(&huart3, UART_FLAG_IDLE)) {
 		__HAL_UART_CLEAR_IDLEFLAG(&huart3); // Clear flag
-		BufferProcessing();
+		//BufferProcessing();
 	}
   /* USER CODE END USART3_IRQn 0 */
   HAL_UART_IRQHandler(&huart3);

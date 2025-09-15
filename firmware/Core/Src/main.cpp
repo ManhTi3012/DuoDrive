@@ -176,7 +176,7 @@ int main(void)
   // Start UART DMA
 //  HAL_UART_Receive_DMA(&huart3, RxData, 1);
   HAL_UART_Receive_DMA(&huart3, DMA_RX_Buffer, RX_BUFFER_SIZE);
-  __HAL_UART_ENABLE_IT(&huart3, UART_IT_IDLE);
+  __HAL_UART_ENABLE_IT(&huart3, UART_IT_ERR);  // enable all error interrupts
 
   /* USER CODE END 2 */
 
@@ -187,25 +187,26 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  if (data_ready) {
-	      data_ready = 0;
-
-	      char *start = strchr((char *)Parse_Buffer, '#');
-	      if (!start) start = strchr((char *)Parse_Buffer, '@');
-
-	      while (start) {
-	          char *end = strchr(start, '\n');
-	          if (!end) break;
-
-	          *end = '\0';
-
-	          if (start[0] == '#') parse(start + 1);
-	          else if (start[0] == '@') machineParse(start + 1);
-
-	          start = strchr(end + 1, '#');
-	          if (!start) start = strchr(end + 1, '@');
-	      }
-	  }
+//	  if (data_ready) {
+//	      data_ready = 0;
+//
+//	      char *start = strchr((char *)Parse_Buffer, '#');
+//	      if (!start) start = strchr((char *)Parse_Buffer, '@');
+//
+//	      while (start) {
+//	          char *end = strchr(start, '\n');
+//	          if (!end) break;
+//
+//	          *end = '\0';
+//
+//	          if (start[0] == '#') parse(start + 1);
+//	          else if (start[0] == '@') machineParse(start + 1);
+//
+//	          start = strchr(end + 1, '#');
+//	          if (!start) start = strchr(end + 1, '@');
+//	      }
+//	  }
+	  BufferProcessing();
   }
   /* USER CODE END 3 */
 }
@@ -719,31 +720,130 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void BufferProcessing(){
-	if (!uart_processing) {
-	    uart_processing = 1;
+//void BufferProcessing(){
+//	if (!uart_processing) {
+//	    uart_processing = 1;
+//
+//	    HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+//
+//	    uint16_t pos = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart3.hdmarx);
+//
+//	    if (pos != old_pos) {
+//	        uint16_t len;
+//	        if (pos > old_pos) {
+//	            len = pos - old_pos;
+//	            memcpy(Parse_Buffer, &DMA_RX_Buffer[old_pos], len);
+//	        } else {
+//	            len = RX_BUFFER_SIZE - old_pos;
+//	            memcpy(Parse_Buffer, &DMA_RX_Buffer[old_pos], len);
+//	            memcpy(Parse_Buffer + len, DMA_RX_Buffer, pos);
+//	            len += pos;
+//	        }
+//
+//	        Parse_Buffer[len] = '\0';
+//	        old_pos = pos;
+//	        data_ready = 1;
+//	    }
+//
+//	    uart_processing = 0;
+//	}
+//}
 
-	    uint16_t pos = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart3.hdmarx);
+void BufferProcessing() {
+	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_6);
+    static uint16_t parse_len = 0; // leftover bytes in Parse_Buffer
 
-	    if (pos != old_pos) {
-	        uint16_t len;
-	        if (pos > old_pos) {
-	            len = pos - old_pos;
-	            memcpy(Parse_Buffer, &DMA_RX_Buffer[old_pos], len);
-	        } else {
-	            len = RX_BUFFER_SIZE - old_pos;
-	            memcpy(Parse_Buffer, &DMA_RX_Buffer[old_pos], len);
-	            memcpy(Parse_Buffer + len, DMA_RX_Buffer, pos);
-	            len += pos;
-	        }
+    uint16_t pos = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart3.hdmarx); // current write pos
 
-	        Parse_Buffer[len] = '\0';
-	        old_pos = pos;
-	        data_ready = 1;
-	    }
+    if (pos == old_pos) return; // nothing new
 
-	    uart_processing = 0;
-	}
+    uint16_t len = 0;
+
+    if (pos > old_pos) {
+        len = pos - old_pos;
+        // guard overflow
+        if (parse_len + len >= RX_BUFFER_SIZE) {
+            // overflow: discard buffer to recover
+            parse_len = 0;
+            old_pos = pos;
+            return;
+        }
+        memcpy(&Parse_Buffer[parse_len], &DMA_RX_Buffer[old_pos], len);
+    } else { // wrapped around
+        len = RX_BUFFER_SIZE - old_pos;
+        if (parse_len + len >= RX_BUFFER_SIZE) { parse_len = 0; old_pos = pos; return; }
+        memcpy(&Parse_Buffer[parse_len], &DMA_RX_Buffer[old_pos], len);
+
+        if (pos > 0) {
+            if (parse_len + len + pos >= RX_BUFFER_SIZE) { parse_len = 0; old_pos = pos; return; }
+            memcpy(&Parse_Buffer[parse_len + len], DMA_RX_Buffer, pos);
+            len += pos;
+        }
+    }
+
+    parse_len += len;
+    old_pos = pos;
+
+    // parse complete lines
+    uint16_t read_idx = 0;
+    for (uint16_t i = 0; i < parse_len; i++) {
+        if (Parse_Buffer[i] == '\n') {
+            // determine line boundaries [read_idx ... i]
+            uint16_t line_start = read_idx;
+            uint16_t line_end = i; // '\n' at i
+
+            // remove optional trailing '\r'
+            if (line_end > line_start && Parse_Buffer[line_end - 1] == '\r') {
+                Parse_Buffer[line_end - 1] = '\0';
+            } else {
+                Parse_Buffer[line_end] = '\0';
+            }
+
+            // find first marker in the line: '#' or '@'
+            char *marker = NULL;
+            for (uint16_t k = line_start; k < line_end; k++) {
+                if (Parse_Buffer[k] == '#' || Parse_Buffer[k] == '@') {
+                    marker = (char *)&Parse_Buffer[k];
+                    break;
+                }
+            }
+
+            if (marker) {
+                if (marker[0] == '#') {
+                    parse(marker + 1);
+                } else {
+                    machineParse(marker + 1);
+                }
+            } else {
+                // no marker found — ignore the line
+            }
+
+            read_idx = i + 1; // move past this line
+        }
+    }
+
+    // move leftover partial data to start of buffer
+    if (read_idx < parse_len) {
+        uint16_t leftover = parse_len - read_idx;
+        memmove(Parse_Buffer, &Parse_Buffer[read_idx], leftover);
+        parse_len = leftover;
+    } else {
+        parse_len = 0;
+    }
+}
+
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+    if (huart == &huart3) {
+        // Clear all error flags just in case
+        __HAL_UART_CLEAR_FEFLAG(huart);
+        __HAL_UART_CLEAR_NEFLAG(huart);
+        __HAL_UART_CLEAR_OREFLAG(huart);
+
+        // Restart DMA to recover
+        HAL_UART_AbortReceive(huart);
+        HAL_UART_Receive_DMA(huart, DMA_RX_Buffer, RX_BUFFER_SIZE);
+    }
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
@@ -809,26 +909,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
 		    }
 		}
 	}
-    if (htim->Instance == TIM6) {
-        uint16_t pos = RX_BUFFER_SIZE - __HAL_DMA_GET_COUNTER(huart3.hdmarx);
-
-        if (pos != old_pos) {
-            uint16_t len;
-            if (pos > old_pos) {
-                len = pos - old_pos;
-                memcpy(Parse_Buffer, &DMA_RX_Buffer[old_pos], len);
-            } else {
-                len = RX_BUFFER_SIZE - old_pos;
-                memcpy(Parse_Buffer, &DMA_RX_Buffer[old_pos], len);
-                memcpy(Parse_Buffer + len, DMA_RX_Buffer, pos);
-                len += pos;
-            }
-
-            Parse_Buffer[len] = '\0';
-            old_pos = pos;
-            data_ready = 1;  // This will be handled in main loop
-        }
-    }
+//    if (htim->Instance == TIM6) {
+//    	BufferProcessing();
+//    }
 }
 /* USER CODE END 4 */
 

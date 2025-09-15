@@ -35,7 +35,7 @@ public:
 	void SetVScale(uint16_t vscale);
 	void SetPScale(uint16_t pscale);
 
-	void SetPPR(uint16_t ppr);
+	void SetPPR(uint32_t ppr);
 	void SetRampSpeed(uint16_t ramp_speed);
 
 	void SetGainP(double set_Kp, double set_Ki, double set_Kd);
@@ -50,7 +50,7 @@ public:
 	uint16_t GetVScale();
 	uint16_t GetPScale();
 
-	uint16_t GetPPR();
+	uint32_t GetPPR();
 	uint16_t GetRampSpeed();
 
 	void GetGainP(double &p, double &i, double &d);
