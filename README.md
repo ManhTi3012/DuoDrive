@@ -16,6 +16,9 @@ DuoDrive is a closed-loop brushed motor driver design to offer simple and afford
   An autonomous robot using DuoDrive's velocity control can still run straight without line or gyro correction.
   ![hi](https://github.com/ManhTi3012/DuoDrive/blob/main/photos/robot.gif)
 
+
+For configuring the driver, checkout the [Web Tool](https://manhti3012.github.io/DuoDriveConfigTool/)
+
 # Hardware
 DuoDrive is designed to handle high current within a small footprint:
 * Voltage input: 12-24v, 30V absolute maximum
