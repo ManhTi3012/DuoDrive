@@ -7900,16 +7900,6 @@
 	)
 	(wire
 		(pts
-			(xy 60.96 173.99) (xy 60.96 175.26)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "1b41571a-89e1-490f-9235-cbc003f8dd30")
-	)
-	(wire
-		(pts
 			(xy 353.06 60.96) (xy 353.06 69.85)
 		)
 		(stroke
@@ -10382,7 +10372,7 @@
 	)
 	(global_label "Reset"
 		(shape input)
-		(at 60.96 175.26 180)
+		(at 60.96 173.99 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -10392,7 +10382,7 @@
 		)
 		(uuid "1d5c235d-723c-4270-8182-ee79c8d65e7a")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 52.7738 175.26 0)
+			(at 52.7738 173.99 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11524,28 +11514,6 @@
 			)
 		)
 	)
-	(global_label "CANSET"
-		(shape input)
-		(at 96.52 242.57 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "d111ed97-fd2b-4b2a-afb4-b092020231d4")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 106.5204 242.57 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-	)
 	(global_label "PWM1A"
 		(shape input)
 		(at 193.04 158.75 0)
@@ -12118,7 +12086,7 @@
 				)
 			)
 		)
-		(property "Value" "1K"
+		(property "Value" "10K"
 			(at 139.7 67.31 90)
 			(effects
 				(font
@@ -20194,7 +20162,7 @@
 				)
 			)
 		)
-		(property "Value" "11.8K"
+		(property "Value" "115K"
 			(at 139.7 59.69 90)
 			(effects
 				(font

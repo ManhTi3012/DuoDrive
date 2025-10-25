@@ -681,6 +681,12 @@
           "label": "Exclude from Simulation",
           "name": "${EXCLUDE_FROM_SIM}",
           "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Sim.Pin",
+          "name": "Sim.Pin",
+          "show": false
         }
       ],
       "filter_string": "",
