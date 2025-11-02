@@ -13,8 +13,10 @@ DuoDrive is a closed-loop brushed motor driver design to offer simple and afford
 * UART interface and CAN Bus (no firmware support yet).
 * Velocity and position control.
 
-  An autonomous robot using DuoDrive's velocity control can still run straight without line or gyro correction.
-  ![hi](https://github.com/ManhTi3012/DuoDrive/blob/main/photos/robot.gif)
+You can also use SimpleFOC library to control a single BLDC motor.
+
+<!---  An autonomous robot using DuoDrive's velocity control can still run straight without line or gyro correction.
+  ![hi](https://github.com/ManhTi3012/DuoDrive/blob/main/photos/robot.gif) --->
 
 
 For configuring the driver, checkout the [Web Tool](https://manhti3012.github.io/DuoDriveConfigTool/)
